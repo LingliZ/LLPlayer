@@ -7,8 +7,7 @@ s.license      = "MIT"
 s.author             = { "Tony" => "845384699@qq.com" }
 s.platform     = :ios, "7.0"
 s.source       = { :git => "https://github.com/tuyuan2012/LLPlayer.git", :tag => s.version }
-s.source_files  = 'LLPlayer/*.{h,m}'
+s.source_files = 'LLPlayer/**/*.{h,m}'
 s.frameworks = "UIKit", "Foundation"
-s.requires_arc = false
-s.xcconfig = { "HEADER_SEARCH_PATHS" => "$(SDKROOT)/usr/include/libxml2" }
+s.requires_arc = true
 end
