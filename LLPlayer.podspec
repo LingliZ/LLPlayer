@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
 s.name         = "LLPlayer"
-s.version      = "0.0.7"
+s.version      = "0.0.6"
 s.summary      = "LLPlayer."
 s.homepage     = "https://github.com/tuyuan2012/LLPlayer"
 s.license      = "MIT"
