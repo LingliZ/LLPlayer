@@ -1,8 +1,16 @@
+
+pod lib lint    #需要验证一下，以便提前发现问题。
+
 git tag 0.0.3
 git push --tag
 
 
 git add .                   #将当前目录下所有文件和子目录的修改记录到Git索引中
 git status                  #列出当前目录下被修改还未提交的状态
-git commit -m ‘first commit’     #提交被add的改动
+git commit -m 'change file content'     #提交被add的改动
 git push origin master           #push代码到Git
+
+
+
+
+pod trunk push LLPlayer.podspec
