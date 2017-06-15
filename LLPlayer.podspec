@@ -10,6 +10,6 @@ s.source       = { :git => "https://github.com/tuyuan2012/LLPlayer.git", :tag =>
 s.source_files = 'LLPlayer/**/*.{h,m}'
 s.resource     = 'LLPlayer/PlayerSDK.bundle'
 s.frameworks = "UIKit", "Foundation"
-s.requires_arc = false
+s.requires_arc = true
 s.dependency "SDWebImage"
 end
