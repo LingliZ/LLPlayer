@@ -1,0 +1,14 @@
+Pod::Spec.new do |s|
+s.name         = "LLPlayer"
+s.version      = "0.0.1"
+s.summary      = "LLPlayer."
+s.homepage     = "https://github.com/tuyuan2012/LLPlayer"
+s.license      = "MIT"
+s.author             = { "Tony" => "845384699@qq.com" }
+s.platform     = :ios, "7.0"
+s.source       = { :git => "https://github.com/tuyuan2012/LLPlayer.git", :tag => s.version }
+s.source_files  = 'LLPlayer/**/*'
+s.frameworks = "UIKit", "Foundation"
+s.requires_arc = false
+s.xcconfig = { "HEADER_SEARCH_PATHS" => "$(SDKROOT)/usr/include/libxml2" }
+end
