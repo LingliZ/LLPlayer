@@ -12,7 +12,7 @@ typedef void(^FullScreenBlock)(BOOL);
 typedef void(^SwitchMediaBlock)(BOOL);
 
 //直播的工具视图：观看人数、音视频切换、放大缩小
-@interface LLiveToolView : UIView
+@interface LLiveToolView : UIImageView
 
 + (instancetype)lLiveToolView;
 
@@ -24,4 +24,5 @@ typedef void(^SwitchMediaBlock)(BOOL);
 
 @property (nonatomic, strong) FullScreenBlock fullScreenBlock;
 @property (nonatomic, strong) SwitchMediaBlock switchMediaBlock;
+
 @end

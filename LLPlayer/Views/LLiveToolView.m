@@ -24,6 +24,7 @@
 - (instancetype)init
 {
     if(self = [super init]){
+        self.userInteractionEnabled = YES;
         [self setupSubViews];
     }
     return self;
@@ -103,9 +104,9 @@
 - (void)layoutSubviews
 {
     [super layoutSubviews];
-    CGSize zoomBtnSize = (CGSize){_zoomBtn.currentImage.size.height + 30.0, _zoomBtn.currentImage.size.width + 30.0};
-    CGSize switchBtnSize = (CGSize){_switchBtn.currentImage.size.height + 30.0, _switchBtn.currentImage.size.width + 30.0};
-    _zoomBtn.frame = (CGRect){{self.bounds.size.width - zoomBtnSize.width, (self.bounds.size.height - switchBtnSize.height)/2.0}, zoomBtnSize};
+    CGSize zoomBtnSize = (CGSize){_zoomBtn.currentImage.size.width + 30.0, _zoomBtn.currentImage.size.height + 30.0};
+    CGSize switchBtnSize = (CGSize){_switchBtn.currentImage.size.width + 30.0, _switchBtn.currentImage.size.height + 30.0};
+    _zoomBtn.frame = (CGRect){{self.bounds.size.width - zoomBtnSize.width, (self.bounds.size.height - zoomBtnSize.height)/2.0}, zoomBtnSize};
     _switchBtn.frame = (CGRect){{CGRectGetMinX(_zoomBtn.frame) - switchBtnSize.width, (self.bounds.size.height - switchBtnSize.height)/2.0}, switchBtnSize};
     _onlineCountLabel.frame = (CGRect){{15.0,0}, {CGRectGetMinX(_switchBtn.frame) - 15.0, self.bounds.size.height}};
 }

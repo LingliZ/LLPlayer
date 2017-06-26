@@ -8,8 +8,11 @@
 
 #import <UIKit/UIKit.h>
 
+typedef void(^LLVNavLeftBtnBlock)(UIButton *);
+typedef void(^LLVNavRightBtnBlock)(UIButton *);
+
 //导航视图
-@interface LLVideoNavView : UIView
+@interface LLVideoNavView : UIImageView
 
 /* 导航栏左边按钮 */
 @property (nonatomic, strong) NSArray *leftButtonItems;
@@ -21,5 +24,14 @@
 @property (nonatomic, strong) UIColor *titleColor;
 /* 标题字体大小 */
 @property (nonatomic, strong) UIFont *titleFont;
+
+//最左边的按钮
+@property (nonatomic, strong) UIButton *leftBtn;
+//最右边的按钮
+@property (nonatomic, strong) UIButton *rightBtn;
+
+@property (nonatomic, strong) LLVNavLeftBtnBlock navLeftBtnBlock;
+
+@property (nonatomic, strong) LLVNavRightBtnBlock navRightBtnBlock;
 
 @end

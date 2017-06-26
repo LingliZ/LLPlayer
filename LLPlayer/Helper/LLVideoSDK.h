@@ -11,7 +11,8 @@
 #import <PlayerSDK/PlayerSDK.h>
 #import "LLiveVideoView.h"
 #import "LLVodeVideoView.h"
-#import "LLSegmentItem.h"
+#import "LLVFunctionItem.h"
 #import "LLiveParam.h"
+#import "LLVodParam.h"
 
 

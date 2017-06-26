@@ -7,7 +7,7 @@
 //
 
 #import "LLVideoNavView.h"
-#import "UIView+LLExtension.h"
+#import "UIView+LLVExtension.h"
 
 @interface LLVideoNavView()
 @property (nonatomic, weak) UILabel *titleLabel;
@@ -24,6 +24,7 @@
 - (instancetype)initWithFrame:(CGRect)frame
 {
     if(self = [super initWithFrame:frame]){
+        self.userInteractionEnabled = YES;
         [self initDefualtData];
         [self setupSubViews];
     }
@@ -35,13 +36,13 @@
     UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
     [btn setImage:[UIImage imageNamed:@"ll_viedo_nav_return_01"] forState:UIControlStateNormal];
     btn.frame = (CGRect){{0, self.navContentMarginY},{30 + btn.currentImage.size.width, self.navContentHeight}};
-    [btn addTarget:self action:@selector(back:) forControlEvents:UIControlEventTouchUpInside];
+    [btn addTarget:self action:@selector(leftBtnClick:) forControlEvents:UIControlEventTouchUpInside];
     _leftButtonItems = [NSArray arrayWithObject:btn];
     
     btn = [UIButton buttonWithType:UIButtonTypeCustom];
     [btn setImage:[UIImage imageNamed:@"ll_viedo_nav_share_01"] forState:UIControlStateNormal];
     btn.frame = (CGRect){{self.bounds.size.width - (30 + btn.currentImage.size.width), self.navContentMarginY},{30 + btn.currentImage.size.width, self.navContentHeight}};
-    [btn addTarget:self action:@selector(share:) forControlEvents:UIControlEventTouchUpInside];
+    [btn addTarget:self action:@selector(rightBtnClick:) forControlEvents:UIControlEventTouchUpInside];
     _rightButtonItems = [NSArray arrayWithObject:btn];
 }
 
@@ -114,6 +115,22 @@
 }
 
 #pragma mark - getter method
+- (UIButton *)leftBtn
+{
+    if(_leftButtonItems.count){
+        _leftBtn = [_leftButtonItems firstObject];
+    }
+    return _leftBtn;
+}
+
+- (UIButton *)rightBtn
+{
+    if(_rightButtonItems.count){
+        _rightBtn = [_rightButtonItems firstObject];
+    }
+    return _rightBtn;
+}
+
 - (CGFloat)navContentHeight
 {
     return (self.bounds.size.height - self.navContentMarginY);
@@ -141,14 +158,20 @@
 }
 
 #pragma mark - btn method
-- (void)back:(UIButton *)sender
+- (void)leftBtnClick:(UIButton *)sender
 {
-    [[self viewController].navigationController popViewControllerAnimated:YES];
+    if(_navLeftBtnBlock){
+        _navLeftBtnBlock(sender);
+    }else{
+        [[self viewController].navigationController popViewControllerAnimated:YES];
+    }
 }
 
-- (void)share:(UIButton *)sender
+- (void)rightBtnClick:(UIButton *)sender
 {
-    
+    if(_navRightBtnBlock){
+        _navRightBtnBlock(sender);
+    }
 }
 
 #pragma mark - life cycle method

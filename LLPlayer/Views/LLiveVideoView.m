@@ -1,5 +1,5 @@
 //
-//  LiveVideoView.m
+//  LLiveVideoView.m
 //  xdfapp
 //
 //  Created by tony on 2017/6/8.
@@ -8,20 +8,18 @@
 
 #import "LLiveVideoView.h"
 #import "LLiveParam.h"
-#import "LLSegmentView.h"
-#import "LLSegmentItem.h"
+
 #import "LLiveToolView.h"
+#import "LLVInputToolView.h"
+#import "LLVChatTableView.h"
+#import "LLVideoToolBar.h"
 
-#import "GHInputToolView.h"
-#import "LLChatTableView.h"
+#import "LLVNetWorkKit.h"
 
-#import "LLColorTool.h"
-#import "UIView+LLExtension.h"
-@interface LLiveVideoView()<GSPPlayerManagerDelegate, GSPDocViewDelegate, GHToolViewDelegate>
+@interface LLiveVideoView()<GSPPlayerManagerDelegate, GSPDocViewDelegate, LLVToolViewDelegate>
 {
     CGRect videoViewRect;//记录videoView的原始尺寸
     CGRect docViewRect;//记录docView的原始尺寸
-    BOOL hasOrientation;
     
     BOOL isAllChat;
     BOOL isPersonalChat;
@@ -29,19 +27,23 @@
 @property (nonatomic, strong) UIImageView *audioPlayHolder;//语音播放中...
 @property (nonatomic, strong) GSPVideoView *videoView;//视频视图
 @property (nonatomic, strong) GSPDocView *docView;//文档视图
-@property (nonatomic, strong) GHInputToolView *inputView;
-@property (nonatomic, strong) LLChatTableView *chatView;
+@property (nonatomic, strong) LLVInputToolView *inputView;
+@property (nonatomic, strong) LLVChatTableView *chatView;
 @property (nonatomic, strong) GSPPlayerManager *playerManager;
-@property (nonatomic, strong) NSMutableArray *userInfoArray;
-@property (nonatomic, strong) LLSegmentView *segmentView;
+@property (nonatomic, strong) NSMutableArray *userInfoArray;//参与聊天的用户
 @property (nonatomic, strong) LLiveToolView *liveToolView;
-@property (nonatomic, strong) LLSegmentItem *currentSegmentItem;
+@property (nonatomic, strong) LLVFunctionItem *currentSegmentItem;
 @property (nonatomic, strong) UIAlertView *alert;
 @end
 
 @implementation LLiveVideoView
 @synthesize navView = _navView;
 @synthesize segmentItems = _segmentItems;
+@synthesize segmentView = _segmentView;
+@synthesize hasOrientation = _hasOrientation;
+@synthesize loadingView = _loadingView;
+@synthesize toolBarItems = _toolBarItems;
+@synthesize toolBarView = _toolBarView;
 - (instancetype)initWithFrame:(CGRect)frame
 {
     if(self = [super initWithFrame:frame]){
@@ -57,15 +59,11 @@
 
 - (void)loadView
 {
-    hasOrientation = NO;
-    
     [self setupSubViews];
 }
 
 - (void)setupSubViews
 {
-    self.backgroundColor = [LLColorTool colorWithHexString:@"#f2f2f2"];
-    
     //Video View
     videoViewRect = CGRectMake(0, 0, self.bounds.size.width, self.playerHeight);
     _videoView = [[GSPVideoView alloc]initWithFrame:videoViewRect];
@@ -79,57 +77,62 @@
     [_videoView addGestureRecognizer:tapGestureRecognizer];
     
     //Nav View
-    if(!_navView){
-        _navView = [[LLVideoNavView alloc] initWithFrame:(CGRect){CGPointZero, {self.bounds.size.width, self.navHeight}}];
-        _navView.title = @"Tony直播";
-    }
-    [self addSubview:_navView];
+    _navView = [[LLVideoNavView alloc] initWithFrame:(CGRect){CGPointZero, {self.bounds.size.width, self.navHeight}}];
+    _navView.title = @"Tony直播";
+    [_videoView addSubview:_navView];
     
     //Live Tool View
-    if(!_liveToolView){
-        _liveToolView = [LLiveToolView lLiveToolView];
-        _liveToolView.frame = (CGRect){{0, _videoView.bounds.size.height - 36.0},{_videoView.bounds.size.width, 36.0}};
-        __weak __typeof(&*self) weakSelf = self;
-        _liveToolView.fullScreenBlock = ^(BOOL flag){
-            if(weakSelf.fullScreenBlock){
-                weakSelf.fullScreenBlock(flag);
-            }
-        };
-        _liveToolView.switchMediaBlock = ^(BOOL flag){
-            [weakSelf.playerManager enableVideo:!flag];
-            weakSelf.audioPlayHolder.hidden = !flag;
-        };
-    }
-    [self addSubview:_liveToolView];
+    __weak __typeof(&*self) weakSelf = self;
+    _liveToolView = [LLiveToolView lLiveToolView];
+    _liveToolView.frame = (CGRect){{0, _videoView.bounds.size.height - 36.0},{_videoView.bounds.size.width, 36.0}};
+    _liveToolView.fullScreenBlock = ^(BOOL flag){
+        [weakSelf fullViedoScreen];
+    };
+    _liveToolView.switchMediaBlock = ^(BOOL flag){
+        [weakSelf.playerManager enableVideo:!flag];
+        weakSelf.audioPlayHolder.hidden = !flag;
+    };
+    [_videoView addSubview:_liveToolView];
     
     //Segment View
     if(_segmentItems.count){
-        _segmentView = [[LLSegmentView alloc] initWithFrame:(CGRect){{0, CGRectGetMaxY(_videoView.frame)}, {self.bounds.size.width, self.segHeight}}];
-        _segmentView.backgroundColor = self.segBackColor;
-        _segmentView.titleFont = self.segTitleFont;
-        _segmentView.titleColor = self.segTitleColor;
-        _segmentView.highlightTitleColor = self.segHighlightTitleColor;
-        _segmentView.indicatorColor = self.segIndicatorColor;
-        _segmentView.lineColor = self.segLineColor;
-        NSMutableArray *titles = [NSMutableArray array];
-        for(LLSegmentItem *item in _segmentItems){
-            [titles addObject:item.title];
-        }
-        [_segmentView loadMenuArr:titles type:SEGMENT_TYPE_SEGMENT];
-        __weak __typeof(&*self) weakSelf = self;
-        [_segmentView addSelectedBlock:^(LLSegmentView *view, NSInteger selectedIndex, NSInteger lastSelectedIndex) {
-            if(selectedIndex != lastSelectedIndex){
-                [weakSelf doSelected:[weakSelf.segmentItems objectAtIndex:selectedIndex]];
-            }
-        }];
-        [self addSubview:_segmentView];
-        
-        //默认选中
-        [self doSelected:_segmentItems.firstObject];
+        _segmentView = [[LLVSegmentView alloc] initWithFrame:(CGRect){{0, CGRectGetMaxY(_videoView.frame)}, {self.bounds.size.width, self.segHeight}}];
     }
+    [self addSubview:_segmentView];
+    
+    [self bringSubviewToFront:_videoView];
+    
+    //底部工具栏
+    if(_toolBarItems.count){
+        _toolBarView = [[LLVideoToolBar alloc] initWithFrame:(CGRect){{0, self.bounds.size.height - self.toolBarHeight}, {self.bounds.size.width, self.toolBarHeight}}];
+    }
+    [self addSubview:_toolBarView];
+    
+    //等待框
+    _loadingView = [[LLVLoadingView alloc] initWithFrame:self.bounds];
+    [self addSubview:_loadingView];
+    
+    //调用父视图加载统一数据
+    [super loadView];
+    
+    _loadingView.loadBtnClick = ^(LLVLoadingState state){
+        [weakSelf.loadingView loadWithState:LLVLoadingState_start withTitle:@"正在进入教室"];
+        [weakSelf setLiveParam:weakSelf.liveParam];
+    };
+    
+    //网络请求
+    [[LLV_HttpManager shared] get:@"http://estudy.staff.xdf.cn/api.php/CourseGroup/index?appKey=CE804942A6D34511BBF4A935E0F7BF11&channelID=1001&courseId=4344" didFinished:^(LLV_BaseOperation * _Nullable operation, NSData * _Nullable data, NSError * _Nullable error, BOOL isSuccess) {
+        
+        NSLog(@"%@",[[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]);
+        
+        NSString *result = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+        NSLog(@"%@",result);
+        NSDictionary *json = [LLV_Json dictionaryWithJson:result];
+        NSLog(@"%@", json);
+    }];
 }
 
-- (void)doSelected:(LLSegmentItem *)item
+- (void)doSelected:(LLVFunctionItem *)item
 {
     _currentSegmentItem = item;
     
@@ -142,16 +145,14 @@
     }
     
     switch (item.type) {
-        case SegmentItmeType_live_doc:{
-            _chatView.hidden = YES;
-            _inputView.hidden = YES;
-            _docView.hidden = NO;
+        case FunctionType_doc:{
+            _chatView.hidden = YES;_inputView.hidden = YES;
+            _toolBarView.hidden = NO;_docView.hidden = NO;
         }
             break;
-        case SegmentItmeType_live_chat:{
-            _docView.hidden = YES;
-            _chatView.hidden = NO;
-            _inputView.hidden = NO;
+        case FunctionType_chat:{
+            _docView.hidden = YES;_toolBarView.hidden = YES;
+            _chatView.hidden = NO;_inputView.hidden = NO;
         }
             break;
         default:
@@ -164,6 +165,7 @@
     //Doc View
     docViewRect = CGRectMake(15.0, CGRectGetMaxY(_segmentView.frame) + 14.0, self.bounds.size.width - 30.0, self.docHeight);
     _docView = [[GSPDocView alloc]initWithFrame:docViewRect];
+    _docView.backgroundColor = [UIColor colorWithRed:51.0/255.0 green:51.0/255.0 blue:51.0/255.0 alpha:1.0];
     [_docView setGlkBackgroundColor:51 green:51 blue:51];
     _docView.gSDocModeType = ScaleAspectFit;
     _docView.pdocDelegate = self;
@@ -179,7 +181,7 @@
 
 - (void)initChatView
 {
-    _chatView = [[LLChatTableView alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(_segmentView.frame), self.bounds.size.width, self.bounds.size.height - CGRectGetMaxY(_segmentView.frame) - 50)];
+    _chatView = [[LLVChatTableView alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(_segmentView.frame), self.bounds.size.width, self.bounds.size.height - CGRectGetMaxY(_segmentView.frame) - 50)];
     //用户相关信息
     GSPUserInfo *userInfo = [GSPUserInfo new];
     userInfo.userID = self.liveParam.customUserID;
@@ -187,7 +189,7 @@
     _chatView.userInfo = userInfo;
     [self addSubview:_chatView];
     
-    _inputView = [[GHInputToolView alloc] initWithParentFrame:self.frame emojiPlistFileName:@"text2file" inBundle:[NSBundle mainBundle]];
+    _inputView = [[LLVInputToolView alloc] initWithParentFrame:self.frame emojiPlistFileName:@"text2file" inBundle:[NSBundle mainBundle]];
     _inputView.backgroundColor = [UIColor whiteColor];
     _inputView.delegate = self;
     
@@ -196,70 +198,101 @@
 
 - (void)rotationVideoView:(UIGestureRecognizer *)ges
 {
-    if(_fullScreenBlock){
-        _fullScreenBlock(!hasOrientation);
-    }
+    [self fullViedoScreen];
 }
 
-- (void)fullViedoScreen:(BOOL)flag
+//文档旋转屏
+- (void)fullViedoScreen
 {
-    //强制旋转
-    if (flag) {
-        [UIView animateWithDuration:0.5 animations:^{//重置子元素frame
-            _videoView.frame = CGRectMake(0, 0, [UIScreen mainScreen].bounds.size.height, [UIScreen mainScreen].bounds.size.width);
-            _liveToolView.frame = (CGRect){{0, _videoView.bounds.size.height - 36.0},{_videoView.bounds.size.width, 36.0}};
-            _navView.frame = (CGRect){CGPointZero, {_videoView.bounds.size.width, self.navHeight}};
-            _audioPlayHolder.frame = _videoView.bounds;
-            _segmentView.frame = (CGRect){{0, CGRectGetMaxY(_videoView.frame)}, {_videoView.bounds.size.width, self.segHeight}};
-            
-            hasOrientation = YES;
-            self.segmentView.hidden = YES;
-            self.chatView.hidden = YES;
-            self.docView.hidden = YES;
-        }];
-    } else {
-        [UIView animateWithDuration:0.5 animations:^{//重置子元素frame
-            _videoView.frame = videoViewRect;
-            _liveToolView.frame = (CGRect){{0, _videoView.bounds.size.height - 36.0},{_videoView.bounds.size.width, 36.0}};
-            _navView.frame = (CGRect){CGPointZero, {self.bounds.size.width, self.navHeight}};
-            _audioPlayHolder.frame = _videoView.bounds;
-            _segmentView.frame = (CGRect){{0, CGRectGetMaxY(_videoView.frame)}, {_videoView.bounds.size.width, self.segHeight}};
-            
-            hasOrientation = NO;
-            self.segmentView.hidden = NO;
-            if(_currentSegmentItem.type == SegmentItmeType_live_doc){
-                self.docView.hidden = NO;
-            }else if(_currentSegmentItem.type == SegmentItmeType_live_doc){
-                self.chatView.hidden = NO;
-            }
-        }];
+    if(_hasOrientation){
+        [self fullViedoScreenFrom:UIInterfaceOrientationLandscapeRight to:UIInterfaceOrientationPortrait];
+    }else{
+        [self bringSubviewToFront:_videoView];
+        [self fullViedoScreenFrom:UIInterfaceOrientationPortrait to:UIInterfaceOrientationLandscapeRight];
     }
 }
 
 //文档旋转屏
 - (void)rotationdocView:(UIGestureRecognizer *)gestureRecognizer {
     //强制旋转
-    if (!hasOrientation) {
-        [UIView animateWithDuration:0.5 animations:^{
-            self.superview.transform = CGAffineTransformMakeRotation(M_PI/2);
-            self.superview.frame = CGRectMake(0, 0, [UIScreen mainScreen].bounds.size.height, [UIScreen mainScreen].bounds.size.width);
-            _docView.frame = CGRectMake(0, 0, [UIScreen mainScreen].bounds.size.height, [UIScreen mainScreen].bounds.size.width);
-            
-            hasOrientation = YES;
-            [[UIApplication sharedApplication] setStatusBarHidden:YES];
-            _docView.zoomEnabled = YES;
-        }];
+    if (_hasOrientation) {
+        [self docTransformRotate:-M_PI_2 frame:docViewRect statusBarOrientation:(UIInterfaceOrientationPortrait) isHiddrenDarkView:YES];
+        _hasOrientation = NO;
     } else {
-        [UIView animateWithDuration:0.5 animations:^{
-            self.superview.transform = CGAffineTransformInvert(CGAffineTransformMakeRotation(0));
-            self.superview.frame = CGRectMake(0, 0, [UIScreen mainScreen].bounds.size.width, [UIScreen mainScreen].bounds.size.height);
-            _docView.frame = docViewRect;
-            
-            hasOrientation = NO;
-            [[UIApplication sharedApplication] setStatusBarHidden:NO];
-            _docView.zoomEnabled = NO;
-        }];
+        [self bringSubviewToFront:_docView];
+        [self docTransformRotate:M_PI_2 frame:[UIScreen mainScreen].bounds statusBarOrientation:(UIInterfaceOrientationLandscapeRight) isHiddrenDarkView:NO];
+        _hasOrientation = YES;
     }
+}
+
+- (void)fullViedoScreenFrom:(UIInterfaceOrientation)from to:(UIInterfaceOrientation)to
+{
+    switch (to) {
+        case UIInterfaceOrientationLandscapeRight:
+        {
+            _hasOrientation = YES;
+            [self videoTransformRotate:M_PI_2 frame:[UIScreen mainScreen].bounds statusBarOrientation:(UIInterfaceOrientationLandscapeRight) isHiddrenDarkView:NO];
+        }
+            break;
+        case UIInterfaceOrientationPortrait:
+        {
+            _hasOrientation = NO;
+            [self videoTransformRotate:-M_PI_2 frame:videoViewRect statusBarOrientation:(UIInterfaceOrientationPortrait) isHiddrenDarkView:YES];
+        }
+            break;
+        case UIInterfaceOrientationLandscapeLeft:{
+            _hasOrientation = YES;
+            [self videoTransformRotate:M_PI_2 frame:videoViewRect statusBarOrientation:(UIInterfaceOrientationPortrait) isHiddrenDarkView:YES];
+        }
+            break;
+        default:
+            break;
+    }
+}
+
+/**
+ *  该方法为控制controller.view 旋转的方法
+ *
+ *  @param pi          旋转弧度
+ *  @param frame       旋转后的frame
+ *  @param orientation 旋转后status的方向
+ *  @param isHiddren   旋转完成后是否显示后面的黑色视图
+ */
+- (void)videoTransformRotate:(CGFloat)pi
+                      frame:(CGRect)frame
+       statusBarOrientation:(UIInterfaceOrientation)orientation
+          isHiddrenDarkView:(BOOL)isHiddren {
+    [UIApplication sharedApplication].statusBarHidden = YES;
+    [UIView animateWithDuration:[[UIApplication sharedApplication] statusBarOrientationAnimationDuration] animations:^{
+        CGAffineTransform transform = CGAffineTransformRotate(_videoView.transform, pi);
+        _videoView.transform = transform;
+        _videoView.frame = frame;
+        _audioPlayHolder.frame = _videoView.bounds;
+        
+        _navView.frame = (CGRect){CGPointZero, {_videoView.bounds.size.width, self.navHeight}};
+        _liveToolView.frame = (CGRect){{0, _videoView.bounds.size.height - 36.0},{_videoView.bounds.size.width, 36.0}};
+    } completion:^(BOOL finished) {
+        if(orientation == UIInterfaceOrientationPortrait){
+            [UIApplication sharedApplication].statusBarHidden = NO;
+        }
+    }];
+}
+
+- (void)docTransformRotate:(CGFloat)pi
+                       frame:(CGRect)frame
+        statusBarOrientation:(UIInterfaceOrientation)orientation
+           isHiddrenDarkView:(BOOL)isHiddren {
+    [UIApplication sharedApplication].statusBarHidden = YES;
+    [UIView animateWithDuration:[[UIApplication sharedApplication] statusBarOrientationAnimationDuration] animations:^{
+        CGAffineTransform transform = CGAffineTransformRotate(_docView.transform, pi);
+        _docView.transform = transform;
+        _docView.frame = frame;
+        
+    } completion:^(BOOL finished) {
+        if(orientation == UIInterfaceOrientationPortrait){
+            [UIApplication sharedApplication].statusBarHidden = NO;
+        }
+    }];
 }
 
 #pragma mark - setter method
@@ -272,8 +305,8 @@
     //判断加入是否成功
     if (!_playerManager) {
         _playerManager = [GSPPlayerManager new];
+        _playerManager.delegate = self;
     }
-    _playerManager.delegate = self;
     GSPJoinParam *joinParam = [_liveParam gspJoinParam];
     joinParam.oldVersion = NO;
     
@@ -285,6 +318,8 @@
 {
     GSPChatMessage *message = [[GSPChatMessage alloc] init];
     message.text = content;
+    NSDate *datenow = [NSDate date];
+    message.receiveTime = (long)[datenow timeIntervalSince1970];
     message.senderUserID = self.liveParam.customUserID;
     //转义  <  >
     message.richText = [content stringByReplacingOccurrencesOfString:@"<" withString:@"&lt;"];
@@ -327,51 +362,64 @@
 - (void)playerManager:(GSPPlayerManager *)playerManager didReceiveSelfJoinResult:(GSPJoinResult)joinResult {
     NSString *result = @"";
     switch (joinResult) {
-        case GSPJoinResultCreateRtmpPlayerFailed:
+        case GSPJoinResultCreateRtmpPlayerFailed:{
             result = NSLocalizedString(@"创建直播实例失败", @"");
+        }
             break;
-        case GSPJoinResultJoinReturnFailed:
+        case GSPJoinResultJoinReturnFailed:{
             result = NSLocalizedString(@"调用加入直播失败", @"");
+        }
             break;
-        case GSPJoinResultNetworkError:
+        case GSPJoinResultNetworkError:{
             result = NSLocalizedString(@"网络错误", @"");
+            [self.loadingView loadWithState:LLVLoadingState_netFail withTitle:@"连接失败，请切换网络并尝试刷新"];
+        }
             break;
-        case GSPJoinResultUnknowError:
+        case GSPJoinResultUnknowError:{
             result = NSLocalizedString(@"未知错误", @"");
+            [self.loadingView loadWithState:LLVLoadingState_otherError withTitle:[NSString stringWithFormat:@"%@，请稍后尝试刷新",result]];
+        }
             break;
-        case GSPJoinResultParamsError:
+        case GSPJoinResultParamsError:{
             result = NSLocalizedString(@"参数错误", @"");
+            [self.loadingView loadWithState:LLVLoadingState_otherError withTitle:[NSString stringWithFormat:@"%@，请稍后尝试刷新",result]];
+        }
             break;
-        case GSPJoinResultOK:
+        case GSPJoinResultOK:{
             result = @"加入成功";
+            [self.loadingView loadWithState:LLVLoadingState_sucess withTitle:nil];
+        }
             break;
-        case GSPJoinResultCONNECT_FAILED:
+        case GSPJoinResultCONNECT_FAILED:{
             result = NSLocalizedString(@"连接失败", @"");
+            [self.loadingView loadWithState:LLVLoadingState_netFail withTitle:@"连接失败，请切换网络并尝试刷新"];
+        }
             break;
-        case GSPJoinResultTimeout:
+        case GSPJoinResultTimeout:{
             result = NSLocalizedString(@"连接超时", @"");
+            [self.loadingView loadWithState:LLVLoadingState_netFail withTitle:@"连接失败，请切换网络并尝试刷新"];
+        }
             break;
-        case GSPJoinResultRTMP_FAILED:
+        case GSPJoinResultRTMP_FAILED:{
             result = NSLocalizedString(@"链接媒体服务器失败", @"");
+            [self.loadingView loadWithState:LLVLoadingState_netFail withTitle:@"连接失败，请切换网络并尝试刷新"];
+        }
             break;
-        case GSPJoinResultTOO_EARLY:
+        case GSPJoinResultTOO_EARLY:{
             result = NSLocalizedString(@"直播尚未开始", @"");
+            [self.loadingView loadWithState:LLVLoadingState_offLine withTitle:[NSString stringWithFormat:@"%@，请稍后尝试刷新",result]];
+        }
             break;
-        case GSPJoinResultLICENSE:
+        case GSPJoinResultLICENSE:{
             result = NSLocalizedString(@"人数已满", @"");
+            [self.loadingView loadWithState:LLVLoadingState_otherError withTitle:[NSString stringWithFormat:@"%@，请稍后尝试刷新",result]];
+        }
             break;
-        default:
-            result = NSLocalizedString(@"错误", @"");
+        default:{
+            result = NSLocalizedString(@"未知错误", @"");
+            [self.loadingView loadWithState:LLVLoadingState_otherError withTitle:[NSString stringWithFormat:@"%@，请稍后尝试刷新",result]];
+        }
             break;
-    }
-    
-    UIAlertView *alertView;
-    if ([result isEqualToString:@"加入成功"]) {
-        
-    } else {
-        alertView = [[UIAlertView alloc] initWithTitle:result message:NSLocalizedString(@"请退出重试", @"") delegate:self cancelButtonTitle:NSLocalizedString(@"知道了", @"") otherButtonTitles:nil];
-        [self addSubview:alertView];
-        [alertView show];
     }
 }
 
@@ -530,13 +578,15 @@
         _audioPlayHolder.frame = self.videoView.bounds;
         _audioPlayHolder.image = [UIImage imageNamed:self.audioPlayHolderImage];
         _audioPlayHolder.contentMode = UIViewContentModeScaleAspectFill;
+        _audioPlayHolder.layer.masksToBounds = YES;
         [_videoView addSubview:_audioPlayHolder];
+        [_videoView bringSubviewToFront:_navView];
+        [_videoView bringSubviewToFront:_liveToolView];
     }
     return _audioPlayHolder;
 }
 
 #pragma mark -
-
 - (void)dealloc {
     [self.playerManager activateMicrophone:NO];
     [self.playerManager leave];
@@ -546,17 +596,9 @@
 #pragma mark ----GSPDocViewDelegate-----
 - (void)docViewPOpenFinishSuccess:(GSPDocPage*)page   docID:(unsigned)docID
 {
-    if (_docView.hidden && !hasOrientation && _currentSegmentItem.type == SegmentItmeType_live_doc) {
+    if (_docView.hidden && !_hasOrientation && _currentSegmentItem.type == FunctionType_doc) {
         _docView.hidden=NO;
     }
 }
-
-/*
-// Only override drawRect: if you perform custom drawing.
-// An empty implementation adversely affects performance during animation.
-- (void)drawRect:(CGRect)rect {
-    // Drawing code
-}
-*/
 
 @end
