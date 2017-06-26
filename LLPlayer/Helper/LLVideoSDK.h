@@ -8,7 +8,7 @@
 
 #import <UIKit/UIKit.h>
 
-#import <PlayerSDK/PlayerSDK.h>
+#import "PlayerSDK.h"
 #import "LLiveVideoView.h"
 #import "LLVodeVideoView.h"
 #import "LLVFunctionItem.h"

@@ -6,7 +6,7 @@
 //  Copyright © 2017年 xdf.cn. All rights reserved.
 //
 
-#import "PlayerSDK/PlayerSDK.h"
+#import "PlayerSDK.h"
 #import "LLVPublicTool.h"
 
 #import "LLVChatCellModel.h"

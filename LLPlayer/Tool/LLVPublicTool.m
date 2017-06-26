@@ -8,7 +8,7 @@
 
 #define CELLHeihgt 56
 
-#import <PlayerSDK/PlayerSDK.h>
+#import "PlayerSDK.h"
 #import "LLVPublicTool.h"
 
 @interface LLVPublicTool() {

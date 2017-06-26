@@ -7,7 +7,7 @@
 //
 
 #import <UIKit/UIKit.h>
-#import <PlayerSDK/PlayerSDK.h>
+#import "PlayerSDK.h"
 #import "LLVideoNavView.h"
 #import "LLVSegmentView.h"
 #import "LLVLoadingView.h"

@@ -11,7 +11,7 @@
 #import "LLVChatCellModel.h"
 
 #import "LLVChatCell.h"
-#import <PlayerSDK/PlayerSDK.h>
+#import "PlayerSDK.h"
 
 #import "LLVColorTool.h"
 #import "LLVPublicTool.h"

@@ -8,7 +8,7 @@
 
 #import "LLVChatCellModel.h"
 
-#import <PlayerSDK/PlayerSDK.h>
+#import "PlayerSDK.h"
 #import "LLVPublicTool.h"
 
 #import "LLVChatCell.h"
